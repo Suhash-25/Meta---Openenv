@@ -44,6 +44,13 @@ def main():
                     "read employee emails, and check company registries to find illicit funds. "
                     "Once you find the guilty accounts, freeze them. Do NOT freeze innocent accounts. "
                     "When finished, submit your report.\n\n"
+                    "CRITICAL RULES:\n"
+                    "1. For `query_ledger` and `freeze_account`, you MUST use the exact Account ID (e.g., 'ACC-ALICE-CORP', 'ACC-TECHSOLUTIONS'). Do NOT use person or company names.\n"
+                    "2. For `read_emails`, you MUST use exact Employee Names (e.g., 'Alice_Smith').\n"
+                    "3. For `lookup_company`, you MUST use exact Company Names (e.g., 'TechSolutions_LLC').\n"
+                    "4. To end the task, use `submit_report` with target as null.\n"
+                    "5. MONEY LAUNDERING RULE: If money is being siphoned out of a main corporate account into offshore/shell accounts, DO NOT freeze the main corporate source account (this disrupts legitimate payroll). ONLY freeze the downstream recipient accounts (shell, offshore, wash accounts).\n"
+                    "6. Make sure you freeze EVERY single downstream illicit account you discover before submitting the report.\n\n"
                     "You must ONLY respond with valid JSON matching this schema:\n"
                     "{\n"
                     '  "action_type": "read_sar" | "query_ledger" | "read_emails" | "lookup_company" | "freeze_account" | "submit_report",\n'

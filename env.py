@@ -11,9 +11,14 @@ class AMLEnvironment:
         """The hidden truth. This simulates our bank ledgers, emails, and company registries."""
         return {
             "easy": {
-                "sar": "ALERT: Employee 'Alice_Smith' flagged for unusually high corporate card expenses.",
+                "sar": "ALERT: Employee 'Alice_Smith' flagged for unusually high corporate card expenses on account 'ACC-ALICE-CORP'.",
                 "ledger": {
-                    "ACC-ALICE-CORP": ["-$5000 Gucci Store", "-$2000 Bahamas Resort", "-$15 Starbucks"],
+                    "ACC-ALICE-CORP": [
+                        "-$5000 Gucci Store", 
+                        "-$2000 Bahamas Resort", 
+                        "-$15 Starbucks",
+                        "-$7000 Wire Transfer to ACC-ALICE-PERSONAL"
+                    ],
                     "ACC-ALICE-PERSONAL": ["+$7000 from ACC-ALICE-CORP (Wire)"]
                 },
                 "emails": {"Alice_Smith": ["Hey team, just expense the luxury bags as 'client gifts' lol. Transferring cash now."]},
@@ -32,7 +37,7 @@ class AMLEnvironment:
                 "targets": ["ACC-TECHSOLUTIONS", "ACC-BOB-PERSONAL"]
             },
             "hard": {
-                "sar": "ALERT: Suspicious wire pattern detected from user 'Charlie_Corp'. Possible layering.",
+                "sar": "ALERT: Suspicious wire pattern detected from account 'ACC-CHARLIE'. Possible layering.", 
                 "ledger": {
                     "ACC-CHARLIE": ["-$100000 to ACC-SHELL-A"],
                     "ACC-SHELL-A": ["+$100000 from ACC-CHARLIE", "-$50000 to ACC-OFFSHORE-B", "-$50000 to ACC-OFFSHORE-C"],
@@ -40,7 +45,7 @@ class AMLEnvironment:
                     "ACC-OFFSHORE-C": ["+$50000 from ACC-SHELL-A", "-$50000 to ACC-CLEAN-WASH"],
                     "ACC-CLEAN-WASH": ["+$100000 total from mixed offshore."]
                 },
-                "emails": {}, # Hard task requires relying strictly on ledgers
+                "emails": {}, 
                 "registry": {
                     "Shell_A": "Registered Agent: Anonymous Proxy. Jurisdiction: Cayman Islands.",
                     "CleanWash_Inc": "Registered Agent: Charlie. Jurisdiction: Panama."
@@ -94,7 +99,8 @@ class AMLEnvironment:
                 result_text = json.dumps(db_context["ledger"][action.target])
                 reward = 0.1
             else:
-                result_text = f"No ledger found for {action.target}."
+
+                result_text = f"ERROR: No ledger found for '{action.target}'. Ensure you are using an exact Account ID (usually starts with ACC-), not a person's name."
                 reward = -0.05
 
         elif action.action_type == "read_emails":
@@ -116,6 +122,10 @@ class AMLEnvironment:
         elif action.action_type == "freeze_account":
             if not action.target:
                 result_text = "Error: No account target specified."
+                reward = -0.1
+
+            elif not str(action.target).startswith("ACC-"):
+                result_text = f"ERROR: '{action.target}' is not a valid Account ID. You must freeze bank accounts (starting with ACC-), not people or companies."
                 reward = -0.1
             elif action.target in self._state.frozen_accounts:
                 result_text = f"Account {action.target} is already frozen."
