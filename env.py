@@ -87,15 +87,15 @@ class AMLEnvironment:
         # --- ACTION ROUTING ---
         if action.action_type == "read_sar":
             result_text = db_context["sar"]
-            reward = 0.05  # Good job starting
+            reward = 0.05
 
         elif action.action_type == "query_ledger":
             if action.target in db_context["ledger"]:
                 result_text = json.dumps(db_context["ledger"][action.target])
-                reward = 0.1  # Found useful financial data
+                reward = 0.1
             else:
                 result_text = f"No ledger found for {action.target}."
-                reward = -0.05  # Wasting time
+                reward = -0.05
 
         elif action.action_type == "read_emails":
             if action.target in db_context["emails"]:
@@ -123,7 +123,6 @@ class AMLEnvironment:
             else:
                 self._state.frozen_accounts.append(action.target)
                 result_text = f"SUCCESS: Account {action.target} frozen."
-                # Don't reward immediately for freezing, evaluate at the end to prevent spamming.
 
         elif action.action_type == "submit_report":
             done = True
@@ -136,7 +135,6 @@ class AMLEnvironment:
             correct_freezes = len(frozen.intersection(targets))
             false_positives = len(frozen - targets)
             
-            # Calculate score: 1.0 for perfect accuracy. Penalize for innocent accounts frozen.
             base_score = correct_freezes / len(targets) if targets else 0.0
             penalty = false_positives * 0.5
             

@@ -1,7 +1,8 @@
 import os
 import json
-from typing import Any
+from typing import Any, cast, Iterable
 from openai import OpenAI
+from openai.types.chat import ChatCompletionMessageParam
 from env import AMLEnvironment
 from models import Action
 
@@ -34,7 +35,7 @@ def main():
         done = False
         
         # We keep a history of the conversation for the LLM
-        messages: list[Any] = [
+        messages: list[dict[str, Any]] = [
             {
                 "role": "system",
                 "content": (
@@ -65,15 +66,26 @@ def main():
                 # Call the LLM
                 response = client.chat.completions.create(
                     model=model_name or "",
-                    messages=messages,
+                    messages=cast(Iterable[ChatCompletionMessageParam], messages),
                     temperature=0.1, # Keep it deterministic and focused
                 )
                 
                 llm_output = (response.choices[0].message.content or "").strip()
                 messages.append({"role": "assistant", "content": llm_output})
 
-                # Try to parse the LLM's output into our strict Pydantic model
-                action_dict = json.loads(llm_output)
+                # --- BULLETPROOF JSON PARSER ---
+                # Strip markdown blocks in case the LLM hallucinates them
+                clean_output = llm_output
+                if clean_output.startswith("```json"):
+                    clean_output = clean_output.split("```json", 1)[1]
+                elif clean_output.startswith("```"):
+                    clean_output = clean_output.split("```", 1)[1]
+                if clean_output.endswith("```"):
+                    clean_output = clean_output.rsplit("```", 1)[0]
+                clean_output = clean_output.strip()
+                
+                # Parse output to Pydantic model
+                action_dict = json.loads(clean_output)
                 action = Action(**action_dict)
                 
                 print(f"🤖 Agent Action: {action.action_type} | Target: {action.target}")

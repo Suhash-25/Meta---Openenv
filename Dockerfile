@@ -8,9 +8,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install the official openenv validator (helpful for their automated checks)
-RUN pip install --no-cache-dir openenv-cli
-
 # Copy all the environment and inference files into the container
 COPY . .
 
