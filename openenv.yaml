@@ -1,0 +1,11 @@
+version: "1.0"
+name: "forensic-aml-investigator"
+description: "An interactive environment where an AI agent acts as a financial forensic investigator to trace money laundering and freeze illicit accounts."
+tasks:
+  - name: "easy"
+    description: "Identify and freeze the account of a rogue employee committing expense fraud."
+  - name: "medium"
+    description: "Uncover a fake vendor invoice scheme linking an employee to a shell company."
+  - name: "hard"
+    description: "Trace illicit funds split across multiple offshore accounts and freeze them without disrupting legitimate corporate payroll."
+entrypoint: "env:AMLEnvironment"
