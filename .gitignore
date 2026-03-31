@@ -1,0 +1,22 @@
+Environments
+
+venv/
+env/
+.venv/
+
+Python Cache
+
+pycache/
+*.pyc
+*.pyo
+*.pyd
+
+Environment Variables / Secrets (CRITICAL)
+
+.env
+.env.local
+
+OS generated files
+
+.DS_Store
+Thumbs.db
