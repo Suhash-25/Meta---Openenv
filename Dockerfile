@@ -16,5 +16,4 @@ ENV API_BASE_URL="http://localhost:8000/v1"
 ENV MODEL_NAME="baseline-model"
 ENV HF_TOKEN="dummy_token"
 
-# By default, running the container will execute your baseline inference script
 CMD ["python", "inference.py"]
