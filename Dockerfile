@@ -1,4 +1,4 @@
-# Use a lightweight Python base image
+# Using a lightweight Python base image
 FROM python:3.10-slim
 
 # Set the working directory in the container
@@ -11,9 +11,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy all the environment and inference files into the container
 COPY . .
 
-# Set environment variables (Placeholders - the evaluator will inject real ones)
+# Set environment variables
 ENV API_BASE_URL="http://localhost:8000/v1"
 ENV MODEL_NAME="baseline-model"
 ENV HF_TOKEN="dummy_token"
 
-CMD ["openenv", "serve", "--host", "0.0.0.0", "--port", "7860"]
+# Start the OpenEnv web server using shell execution
+CMD openenv serve --host 0.0.0.0 --port 7860
