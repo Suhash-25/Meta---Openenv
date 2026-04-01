@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "forensic-aml-env"
+version = "1.0.0"
+description = "Forensic AML Investigator OpenEnv"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0.0",
+    "openai>=1.0.0",
+    "pyyaml>=6.0",
+    "openenv",
+    "openenv-core[cli]",
+    "streamlit>=1.0.0"
+]
+
+[project.scripts]
+server = "server.app:main"
