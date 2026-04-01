@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from typing import Any, cast, Iterable
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
@@ -73,19 +74,21 @@ def main():
                 "content": f"CURRENT OBSERVATION:\n{obs.model_dump_json(indent=2)}\n\nWhat is your next action (JSON only)?"
             })
 
+            # THE BRAKES: Keep this here for Groq too!
+            time.sleep(4) 
+
             try:
                 # Call the LLM
                 response = client.chat.completions.create(
                     model=model_name or "",
                     messages=cast(Iterable[ChatCompletionMessageParam], messages),
-                    temperature=0.1, # Keep it deterministic and focused
+                    temperature=0.1, 
                 )
                 
                 llm_output = (response.choices[0].message.content or "").strip()
                 messages.append({"role": "assistant", "content": llm_output})
 
                 # --- BULLETPROOF JSON PARSER ---
-                # Strip markdown blocks in case the LLM hallucinates them
                 clean_output = llm_output
                 if clean_output.startswith("```json"):
                     clean_output = clean_output.split("```json", 1)[1]
@@ -109,10 +112,13 @@ def main():
                     total_score += info['task_score']
 
             except Exception as e:
-                print(f"⚠️ Agent Error / Bad JSON: {e}")
-                # If the LLM messes up, tell it so it can fix it on the next loop
+                print(f"⚠️ Agent Error / Rate Limit: {e}")
                 obs_error = f"System Error: {str(e)}. Please ensure you output strictly valid JSON matching the schema."
                 messages.append({"role": "user", "content": obs_error})
+                
+                # --- ADD THIS TO RECOVER FROM 429 ERRORS ---
+                print("⏳ Sleeping for 20 seconds to let the API rate limits reset...")
+                time.sleep(20)
                 
                 # Failsafe to prevent infinite error loops
                 if len(messages) > 30:
