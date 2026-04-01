@@ -16,4 +16,4 @@ ENV API_BASE_URL="http://localhost:8000/v1"
 ENV MODEL_NAME="baseline-model"
 ENV HF_TOKEN="dummy_token"
 
-CMD ["streamlit", "run", "app.py", "--server.port", "7860", "--server.address", "0.0.0.0"]
+CMD ["openenv", "serve", "--host", "0.0.0.0", "--port", "7860"]
