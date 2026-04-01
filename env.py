@@ -121,7 +121,6 @@ class AMLEnvironment:
         result_text = ""
         db_context = self.db[self._state.current_task]
 
-        # --- ACTION ROUTING ---
         if action.action_type == "read_sar":
             result_text = db_context["sar"]
             reward = 0.05

@@ -16,4 +16,4 @@ ENV API_BASE_URL="http://localhost:8000/v1"
 ENV MODEL_NAME="baseline-model"
 ENV HF_TOKEN="dummy_token"
 
-CMD ["python", "inference.py"]
+CMD ["streamlit", "run", "app.py", "--server.port", "7860", "--server.address", "0.0.0.0"]

@@ -35,6 +35,7 @@ def main():
         done = False
         
         # We keep a history of the conversation for the LLM
+        # We keep a history of the conversation for the LLM
         messages: list[dict[str, Any]] = [
             {
                 "role": "system",
@@ -49,12 +50,12 @@ def main():
                     "2. For `read_emails`, use exact Employee Names (e.g., 'Alice_Smith').\n"
                     "3. For `lookup_company`, use exact Company Names (e.g., 'TechSolutions_LLC').\n"
                     "4. TRACING RULE: Do NOT submit your report early! You must use `query_ledger` on EVERY suspicious account you discover to follow the money.\n"
-                    "5. FREEZING RULES:\n"
-                    "   - Freeze ALL accounts involved in the fraud.\n"
-                    "   - You MUST freeze every single account in the money chain, including the FINAL destination 'wash' accounts where the money pools together.\n"
+                   "5. FREEZING RULES (READ CAREFULLY):\n"
+                    "   - Freeze ALL accounts involved in the fraud, including the FINAL destination 'wash' accounts.\n"
+                    "   - STOP tracing and freezing once you reach the final 'wash' account where funds pool together. Do NOT freeze external merchants where the washed money is ultimately spent (e.g., Yacht Brokers).\n"
+                    "   - Do NOT freeze legitimate business vendors (e.g., AWS Hosting, Office Depot, Rent, Tax Authorities, Payroll). Only freeze accounts explicitly tied to the fraudster, fake vendors, or offshore shell networks.\n"
                     "   - If a rogue employee is committing fraud on their specific individual corporate card (e.g., ACC-ALICE-CORP), freeze it AND their personal account.\n"
-                    "   - If money is being layered out of a company's MAIN wire account (e.g., ACC-CHARLIE) into shell companies, do NOT freeze the main company account. ONLY freeze the downstream shell, offshore, and final wash accounts.\n\n"
-                    "You must ONLY respond with valid JSON matching this schema:\n"
+                    "   - NEVER freeze the origin main corporate account (e.g., ACC-CHARLIE) under any circumstances, even if it initiated the wire. ONLY freeze the downstream receiving shell and offshore accounts to avoid disrupting payroll.\n\n"
                     "{\n"
                     '  "action_type": "read_sar" | "query_ledger" | "read_emails" | "lookup_company" | "freeze_account" | "submit_report",\n'
                     '  "target": "string or null"\n'
