@@ -64,6 +64,11 @@ export HF_TOKEN="<your-api-key>"
 python inference.py
 ```
 
+### 4. Interactive Web Dashboard (Bonus Feature)
+Want to investigate manually? We built a Streamlit UI complete with an AI Copilot!
+Run the following command to launch the dashboard:
+`streamlit run app.py`
+
 ## 📁 Project Structure
 ```
 forensic-aml-env/
