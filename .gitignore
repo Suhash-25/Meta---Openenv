@@ -1,6 +1,7 @@
 Environments
 
 venv/
+venv_fixed/
 env/
 .venv/
 
