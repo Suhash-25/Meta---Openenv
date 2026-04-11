@@ -102,14 +102,17 @@ def main():
                 # Step the environment forward
                 obs, reward, done, info = env.step(action)
                 
-                # --- MANDATORY: STEP TAG ---
-                print(f"[STEP] step={step_count} reward={reward}", flush=True)
+                # Ensure reward is also nudged if necessary (optional but safer)
+                safe_reward = max(0.01, min(0.99, float(reward)))
+                print(f"[STEP] step={step_count} reward={safe_reward}", flush=True)
                 
                 if done:
-                    task_score = info.get('task_score', 0.0)
-                    # --- MANDATORY: END TAG ---
-                    print(f"[END] task={task} score={task_score} steps={step_count}", flush=True)
-                    total_score += task_score
+                    # Fix for "Score out of range" error
+                    raw_task_score = info.get('task_score', 0.0)
+                    final_task_score = max(0.01, min(0.99, float(raw_task_score)))
+                    
+                    total_score += final_task_score
+                    print(f"[END] task={task} score={final_task_score} steps={step_count}", flush=True)
 
             except Exception as e:
                 print(f"⚠️ Agent Error / Rate Limit: {e}")
