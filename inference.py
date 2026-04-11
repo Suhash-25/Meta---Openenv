@@ -2,6 +2,7 @@ import os
 import re
 import json
 import time
+import sys
 from typing import Any, cast, Iterable
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
@@ -9,129 +10,116 @@ from env import AMLEnvironment
 from models import Action
 
 def main():
-    # 1. Load required environment variables (Strict OpenEnv Rule)
     api_base = os.getenv("API_BASE_URL")
     model_name = os.getenv("MODEL_NAME")
     api_key = os.getenv("HF_TOKEN")
 
     if not all([api_base, model_name, api_key]):
-        raise ValueError("Missing required environment variables: API_BASE_URL, MODEL_NAME, or HF_TOKEN")
+        print("Missing API credentials.", file=sys.stderr)
+        return
 
-    # 2. Initialize the OpenAI-compatible client
-    client = OpenAI(
-        base_url=api_base,
-        api_key=api_key
-    )
-
-    # 3. Initialize our Environment
+    client = OpenAI(base_url=api_base, api_key=api_key)
     env = AMLEnvironment()
     tasks = ["easy", "medium", "hard"]
-    total_score = 0.0
+    cumulative_score = 0.0
 
-    print("🕵️‍♂️ Starting Forensic AML Investigator Baseline Agent...\n")
+    print("🕵️‍♂️ Starting Forensic AML Investigator Baseline Agent...\n", flush=True)
 
-    # 4. Loop through each difficulty level
     for task in tasks:
-        # --- MANDATORY: START TAG ---
-        print(f"[START] task={task}", flush=True) 
-
+        print(f"[START] task={task}", flush=True)
         obs = env.reset(task)
         done = False
         step_count = 0
         
-        # History of the conversation for the LLM
+        # We track history locally to detect loops
+        action_history = []
+
         messages: list[dict[str, Any]] = [
             {
                 "role": "system",
                 "content": (
-                    "You are a Forensic AML (Anti-Money Laundering) Investigator. "
-                    "Your job is to read Suspicious Activity Reports (SAR), query bank ledgers, "
-                    "read employee emails, and check company registries to find illicit funds. "
-                    "Once you find the guilty accounts, freeze them. Do NOT freeze innocent accounts. "
-                    "When finished, use submit_report.\n\n"
-                    "CRITICAL RULES:\n"
-                    "1. For `query_ledger` and `freeze_account`, use exact Account IDs.\n"
-                    "2. For `read_emails`, use exact Employee Names.\n"
-                    "3. For `lookup_company`, use exact Company Names.\n"
-                    "4. TRACING RULE: Do NOT submit early! Follow the money to the end.\n"
-                    "5. Output ONLY raw JSON starting with { and ending with }.\n\n"
-                    "Schema:\n"
-                    "{\n"
-                    '  "action_type": "read_sar" | "query_ledger" | "read_emails" | "lookup_company" | "freeze_account" | "submit_report",\n'
-                    '  "target": "string or null"\n'
-                    "}\n"
+                    "You are a Senior AML Investigator. Your ONLY goal is to find the illicit account, FREEZE it, and SUBMIT.\n\n"
+                    "INVESTIGATION PROTOCOL:\n"
+                    "1. Read SAR to get the first account.\n"
+                    "2. Query the ledger. If you see a transfer to a suspicious/new account, query THAT account next.\n"
+                    "3. Once you reach an account that is clearly a 'wash' account (money pools there), use 'freeze_account'.\n"
+                    "4. IMMEDIATELY after freezing the guilty account(s), use 'submit_report' to end the mission.\n\n"
+                    "STRICT LIMITS:\n"
+                    "- Never query the same target twice.\n"
+                    "- Do NOT use more than 10 steps. Be efficient.\n"
+                    "- Use ONLY these actions: read_sar, query_ledger, read_emails, lookup_company, freeze_account, submit_report.\n\n"
+                    "JSON ONLY: {\"action_type\": \"...\", \"target\": \"...\"}"
                 )
             }
         ]
 
-        # 5. The Agent Loop (max 15 steps per task)
         while not done and step_count < 15:
-            step_count += 1 
-
-            # Force a submission if we are at the limit
-            if step_count == 15:
-                messages.append({"role": "user", "content": "CRITICAL: Final step. You MUST call submit_report now."})
-
-            messages.append({
-                "role": "user",
-                "content": f"CURRENT OBSERVATION:\n{obs.model_dump_json(indent=2)}\n\nWhat is your next action (JSON only)?"
-            })
-
-            time.sleep(4) # Rate limit safety
+            step_count += 1
+            
+            # Inject a "Pressure" message if the agent is taking too long
+            user_msg = f"STEP {step_count}/15. OBSERVATION:\n{obs.model_dump_json()}\n"
+            if step_count > 8:
+                user_msg += "CRITICAL: You are running out of time. If you have found the fraud, FREEZE and SUBMIT now."
+            
+            messages.append({"role": "user", "content": user_msg})
 
             try:
                 response = client.chat.completions.create(
                     model=model_name or "",
                     messages=cast(Iterable[ChatCompletionMessageParam], messages),
-                    temperature=0.1, 
+                    temperature=0.1,
                 )
                 
                 llm_output = (response.choices[0].message.content or "").strip()
                 messages.append({"role": "assistant", "content": llm_output})
 
-                # --- IMPROVED REGEX PARSER ---
-                # Extracts only the JSON object, ignoring any extra chatter or markdown
+                # 1. Extract JSON
                 match = re.search(r'(\{.*\})', llm_output, re.DOTALL)
                 clean_output = match.group(1) if match else llm_output
-                
-                action_dict = json.loads(clean_output)
-                action = Action(**action_dict)
-                
-                print(f"🤖 Agent Action: {action.action_type} | Target: {action.target}")
+                data = json.loads(clean_output)
 
-                # Step the environment forward
+                # 2. HARD-CODED REPAIR: Fix 'query_account' hallucination and 'action' key
+                raw_action = data.get("action_type") or data.get("action")
+                if raw_action == "query_account":
+                    raw_action = "query_ledger"
+                
+                final_data = {
+                    "action_type": raw_action,
+                    "target": data.get("target")
+                }
+
+                action = Action(**final_data)
+                
+                # 3. LOOP DETECTION
+                action_sig = f"{action.action_type}-{action.target}"
+                if action_sig in action_history:
+                    messages.append({"role": "user", "content": f"WARNING: You already tried {action_sig}. DO NOT REPEAT ACTIONS. Move to the next account or SUBMIT."})
+                action_history.append(action_sig)
+
+                # 4. EXECUTE
+                print(f"DEBUG: {task} | Step {step_count} | {action.action_type} -> {action.target}", file=sys.stderr, flush=True)
                 obs, reward, done, info = env.step(action)
                 
-                # Ensure reward is also nudged if necessary (optional but safer)
-                safe_reward = max(0.01, min(0.99, float(reward)))
-                print(f"[STEP] step={step_count} reward={safe_reward}", flush=True)
-                
+                # Clamped Reward for Validator
+                print(f"[STEP] step={step_count} reward={max(0.01, min(0.99, float(reward)))}", flush=True)
+
                 if done:
-                    # Fix for "Score out of range" error
-                    raw_task_score = info.get('task_score', 0.0)
-                    final_task_score = max(0.01, min(0.99, float(raw_task_score)))
-                    
-                    total_score += final_task_score
-                    print(f"[END] task={task} score={final_task_score} steps={step_count}", flush=True)
+                    safe_score = max(0.01, min(0.99, float(info.get('task_score', 0.0))))
+                    cumulative_score += safe_score
+                    print(f"[END] task={task} score={safe_score} steps={step_count}", flush=True)
 
             except Exception as e:
-                print(f"⚠️ Agent Error / Rate Limit: {e}")
-                obs_error = f"System Error: {str(e)}. Please output strictly valid JSON."
-                messages.append({"role": "user", "content": obs_error})
-                
-                # Recover from potential 429 rate limits
-                print("⏳ Sleeping for 20 seconds...")
-                time.sleep(20)
-                
-                if len(messages) > 40:
-                    print(f"❌ Task '{task}' aborted due to excessive errors.")
+                print(f"⚠️ Error: {e}", file=sys.stderr)
+                if step_count == 15:
+                    print(f"[STEP] step={step_count} reward=0.01", flush=True)
+                    print(f"[END] task={task} score=0.01 steps={step_count}", flush=True)
                     break
+            
+            sys.stdout.flush()
 
-    # 6. Final Evaluation Output
-    max_possible = len(tasks)
-    print("==========================================")
-    print(f"🏆 FINAL BASELINE SCORE: {total_score} / {max_possible}")
-    print("==========================================")
+    print("\n" + "="*42)
+    print(f"🏆 FINAL BASELINE SCORE: {cumulative_score:.2f} / 3")
+    print("="*42)
 
 if __name__ == "__main__":
     main()
