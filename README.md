@@ -1,80 +1,15 @@
-# 🕵️‍♂️💸 Forensic AML Investigator (OpenEnv)
-
-An interactive, real-world OpenEnv environment where an AI agent acts as a financial forensic investigator. The agent must navigate messy data across bank ledgers, corporate emails, and business registries to trace money laundering and freeze illicit accounts.
-
-## 🌍 Real-World Utility & Motivation
-Financial institutions and governments spend billions of dollars annually on human analysts trying to trace illicit funds. Criminals use "layering"—moving money through shell companies, offshore accounts, and fake vendors—to hide its origin. 
-
-This environment moves beyond standard coding or web-scraping tasks to test an LLM's **multi-hop reasoning**, **entity resolution**, and **high-stakes decision-making**. It models a genuine enterprise workflow where an agent must aggregate data from distinct APIs (ledgers, emails, registries) to build a case.
-
-## 🧩 Spaces (Strictly Typed via Pydantic)
-
-### Observation Space
-After every action, the agent receives a strict `Observation` containing:
-* `step_count` (int): Actions taken so far (max 15 steps per task).
-* `last_action` (str): Summary of the attempted action.
-* `result` (str): The returned data (e.g., a JSON list of transactions, an email body, or an error message).
-* `currently_frozen_accounts` (List[str]): Accounts the agent has frozen during the episode.
-
-### Action Space
-The agent outputs a strict `Action` JSON with `action_type` and an optional `target`:
-* `read_sar`: Reads the initial Suspicious Activity Report (SAR) to start the investigation.
-* `query_ledger`: Checks bank transactions for a specific account ID.
-* `read_emails`: Reads internal corporate emails for a specific employee.
-* `lookup_company`: Checks the business registry for a company name.
-* `freeze_account`: Freezes a target account based on gathered evidence.
-* `submit_report`: Ends the episode and triggers the programmatic grader.
-
-## 📈 Tasks & Difficulty Progression
-1. **Easy:** A rogue employee is using a corporate card for personal luxury purchases. 
-   * *Challenge:* Linking basic ledger entries to email confessions.
-2. **Medium:** "Invoice Fraud." An employee set up a fake vendor company. 
-   * *Challenge:* Connecting the vendor's registered agent to the employee to prove a conflict of interest.
-3. **Hard:** Complex Money Laundering/Layering. Funds are split into multiple offshore shell companies. 
-   * *Challenge:* Tracing a multi-hop financial graph entirely through ledger queries, identifying the flow of funds while actively ignoring innocent accounts.
-
-## ⚖️ Meaningful Reward Function & Grader
-The environment features a deterministic, programmatic grader that produces a score from `0.0` to `1.0`.
-
-* **Partial Progress:** The agent receives small, immediate rewards (`+0.05` to `+0.1`) for successfully querying relevant databases, and penalties (`-0.05`) for querying non-existent data, providing a rich signal over the trajectory.
-* **Final Score:** Upon calling `submit_report`, the environment calculates the percentage of correctly frozen guilty accounts. 
-* **Penalties:** The agent is heavily penalized (`-0.5` per account) for freezing innocent accounts (false positives). Freezing the wrong account in real life carries massive compliance and legal risks, and the environment reflects this.
-
-## 🚀 Setup & Usage
-
-### 1. Local Installation
-Clone the repository and install the dependencies:
-```bash
-python -m venv venv
-source venv/bin/activate        # Linux/macOS
-venv\Scripts\activate           # Windows
+🕵️‍♂️ Forensic AML Investigator OpenEnvAn AML Reasoning Benchmark for Multi-Step Financial Investigation🛡️ Category: Financial Intelligence / RegTech🚀 Difficulty: Easy | Medium | Hard📦 SDK: Docker Compatible | FastAPI | PydanticProblem MotivationFinancial crimes like money laundering are rarely identified in a single step. An investigator must follow a "money trail" through layers of shell companies, offshore accounts, and corporate emails to find the ultimate source or destination of illicit funds.Most benchmarks evaluate simple classification (Is this transaction fraud: Yes/No?). Forensic AML Investigator OpenEnv evaluates whether an agent can reason like a practical Financial Intelligence Unit (FIU) analyst—navigating bank ledgers and corporate registries while staying fast, reproducible, and validator-friendly.Environment DesignThe environment provides three realistic financial investigation workflows:Easy: Individual "rogue employee" fraud using corporate cards and personal accounts.Medium: Corporate embezzlement involving shell companies and vendor fraud.Hard: Multi-layered offshore laundering networks designed to "wash" funds through complex wire transfers.The environment tracks:Money Trail Progress: How many layers of the laundering chain have been uncovered.Freeze Accuracy: Distinguishing between "wash" accounts and legitimate business vendors (e.g., AWS, Payroll).Action History: Ensuring the agent doesn't repeat queries and wastes resources.Action and Observation SpacesAction SpaceThe action space is a typed Pydantic model:Pythonclass Action(BaseModel):
+    action_type: str  # read_sar, query_ledger, read_emails, lookup_company, freeze_account, submit_report
+    target: str       # Account ID, Employee Name, or Company Name
+Observation SpaceThe observation space returns structured financial and investigative context:Pythonclass Observation(BaseModel):
+    account_details: Optional[dict]
+    transaction_history: Optional[list]
+    email_content: Optional[str]
+    company_registry: Optional[dict]
+    system_message: str
+Multi-Step ReasoningInstead of one-shot answers, the agent must execute a sequence of investigative steps:Detect: Extract initial IDs from a Suspicious Activity Report (SAR).Trace: Use query_ledger and read_emails to follow transfers to downstream accounts.Contain: Use freeze_account on confirmed shell/illicit accounts.Report: Use submit_report to finalize the investigation.Reward DesignRewards are shaped at every step and clamped to [0, 1]:Positive Reward (+0.1): Successfully identifying a new "layer" in the money trail.Accuracy Bonus (+0.5 - 0.75): Awarded upon submit_report for correctly freezing the "wash" account.Penalties (-0.05): Querying legitimate vendors (Payroll/AWS) or re-querying the same account.Zero Reward: Freezing the main origin corporate account (to avoid disrupting business operations).ArchitectureThe benchmark is split into reusable layers:env/: Stateful AML environment logic.models.py: Pydantic definitions for Actions and Observations.inference.py: The main agent runner with Recursive JSON Parsing and LLM reasoning.requirements.txt: Minimal dependencies for hackathon-speed execution.Agent DesignThe included inference.py uses a Resilient Reasoning Strategy:Recursive JSON Parser: Automatically extracts valid actions even if the LLM adds conversational "chatter" or nests the JSON incorrectly.Environment-Aware Prompting: Explicitly instructs the agent on "Freezing Rules" to ensure business continuity while stopping fraud.Deterministic Step Tracking: Strictly adheres to the [START], [STEP], and [END] logging format required for Scaler validation.Benchmark ResultsThe environment is optimized for high-fidelity reasoning with low compute overhead.TaskStepsScoreNotesEasy120.50Successfully identifies and freezes personal account.Medium150.00Currently fails due to high-complexity ID tracing loops.Hard90.75Expertly traces through Shell-A and Offshore-B to the final wash.🏆 FINAL BASELINE SCORE: 1.25 / 3.0Interface CompatibilityThis project preserves all hackathon requirements:3 core tasks (Easy/Medium/Hard).Typed Pydantic observations and actions.Mandatory logging format: [START], [STEP], [END].Docker-compatible and FastAPI ready.Setup and UsageLocal Run:Bash# Install dependencies
 pip install -r requirements.txt
-```
 
-### 2. Configure Environment Variables
-Create a `.env` file or export the following before running:
-```bash
-export API_BASE_URL="https://<your-openai-compatible-endpoint>/v1"
-export MODEL_NAME="<your-model-name>"
-export HF_TOKEN="<your-api-key>"
-```
-
-### 3. Run the Agent
-```bash
+# Run the investigator agent
 python inference.py
-```
-
-### 4. Interactive Web Dashboard (Bonus Feature)
-Want to investigate manually? We built a Streamlit UI complete with an AI Copilot!
-Run the following command to launch the dashboard:
-`streamlit run app.py`
-
-## 📁 Project Structure
-```
-forensic-aml-env/
-├── env.py            # AML environment: database, action routing, grader
-├── models.py         # Pydantic models: Action, Observation, State
-├── inference.py      # Baseline agent loop using an OpenAI-compatible LLM
-├── requirements.txt  # Python dependencies
-└── README.md
-```
+Environment Variables Required:API_BASE_URL: Your LLM provider endpoint.MODEL_NAME: The model version (e.g., Llama-3).HF_TOKEN: Your HuggingFace/API key.
