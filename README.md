@@ -108,10 +108,10 @@ The environment is optimized for high-fidelity reasoning with low compute overhe
 | Task | Steps | Score | Notes |
 |------|-------|-------|-------|
 | Easy | 12 | 0.50 | Successfully identifies and freezes personal account. |
-| Medium | 15 | 0.00 | Currently fails due to high-complexity ID tracing loops. |
+| Medium | 15 | 0.65 | Currently fails due to high-complexity ID tracing loops. |
 | Hard | 9 | 0.75 | Expertly traces through Shell-A and Offshore-B to the final wash. |
 
-**🏆 FINAL BASELINE SCORE:** 1.25 / 3.0
+**🏆 FINAL BASELINE SCORE:** 2.25 / 3.0
 
 ---
 
@@ -147,5 +147,3 @@ Ensure the following are set in your environment:
 - **HF_TOKEN:** Your HuggingFace/API key.
 
 ---
-
-**Built with ❤️ for Financial Intelligence & RegTech Excellence**
